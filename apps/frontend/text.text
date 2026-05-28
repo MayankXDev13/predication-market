@@ -1,0 +1,73 @@
+Package files:
+ 100 /var/lib/dpkg/status
+     release a=now
+ 500 http://security.ubuntu.com/ubuntu resolute-security/universe i386 Packages
+     release v=26.04,o=Ubuntu,a=resolute-security,n=resolute,l=Ubuntu,c=universe,b=i386
+     origin security.ubuntu.com
+ 500 http://security.ubuntu.com/ubuntu resolute-security/universe amd64 Packages
+     release v=26.04,o=Ubuntu,a=resolute-security,n=resolute,l=Ubuntu,c=universe,b=amd64
+     origin security.ubuntu.com
+ 500 http://security.ubuntu.com/ubuntu resolute-security/restricted i386 Packages
+     release v=26.04,o=Ubuntu,a=resolute-security,n=resolute,l=Ubuntu,c=restricted,b=i386
+     origin security.ubuntu.com
+ 500 http://security.ubuntu.com/ubuntu resolute-security/restricted amd64 Packages
+     release v=26.04,o=Ubuntu,a=resolute-security,n=resolute,l=Ubuntu,c=restricted,b=amd64
+     origin security.ubuntu.com
+ 500 http://security.ubuntu.com/ubuntu resolute-security/main i386 Packages
+     release v=26.04,o=Ubuntu,a=resolute-security,n=resolute,l=Ubuntu,c=main,b=i386
+     origin security.ubuntu.com
+ 500 http://security.ubuntu.com/ubuntu resolute-security/main amd64 Packages
+     release v=26.04,o=Ubuntu,a=resolute-security,n=resolute,l=Ubuntu,c=main,b=amd64
+     origin security.ubuntu.com
+ 500 http://in.archive.ubuntu.com/ubuntu resolute-updates/multiverse amd64 Packages
+     release v=26.04,o=Ubuntu,a=resolute-updates,n=resolute,l=Ubuntu,c=multiverse,b=amd64
+     origin in.archive.ubuntu.com
+ 500 http://in.archive.ubuntu.com/ubuntu resolute-updates/universe i386 Packages
+     release v=26.04,o=Ubuntu,a=resolute-updates,n=resolute,l=Ubuntu,c=universe,b=i386
+     origin in.archive.ubuntu.com
+ 500 http://in.archive.ubuntu.com/ubuntu resolute-updates/universe amd64 Packages
+     release v=26.04,o=Ubuntu,a=resolute-updates,n=resolute,l=Ubuntu,c=universe,b=amd64
+     origin in.archive.ubuntu.com
+ 500 http://in.archive.ubuntu.com/ubuntu resolute-updates/restricted i386 Packages
+     release v=26.04,o=Ubuntu,a=resolute-updates,n=resolute,l=Ubuntu,c=restricted,b=i386
+     origin in.archive.ubuntu.com
+ 500 http://in.archive.ubuntu.com/ubuntu resolute-updates/restricted amd64 Packages
+     release v=26.04,o=Ubuntu,a=resolute-updates,n=resolute,l=Ubuntu,c=restricted,b=amd64
+     origin in.archive.ubuntu.com
+ 500 http://in.archive.ubuntu.com/ubuntu resolute-updates/main i386 Packages
+     release v=26.04,o=Ubuntu,a=resolute-updates,n=resolute,l=Ubuntu,c=main,b=i386
+     origin in.archive.ubuntu.com
+ 500 http://in.archive.ubuntu.com/ubuntu resolute-updates/main amd64 Packages
+     release v=26.04,o=Ubuntu,a=resolute-updates,n=resolute,l=Ubuntu,c=main,b=amd64
+     origin in.archive.ubuntu.com
+ 500 http://in.archive.ubuntu.com/ubuntu resolute/multiverse i386 Packages
+     release v=26.04,o=Ubuntu,a=resolute,n=resolute,l=Ubuntu,c=multiverse,b=i386
+     origin in.archive.ubuntu.com
+ 500 http://in.archive.ubuntu.com/ubuntu resolute/multiverse amd64 Packages
+     release v=26.04,o=Ubuntu,a=resolute,n=resolute,l=Ubuntu,c=multiverse,b=amd64
+     origin in.archive.ubuntu.com
+ 500 http://in.archive.ubuntu.com/ubuntu resolute/universe i386 Packages
+     release v=26.04,o=Ubuntu,a=resolute,n=resolute,l=Ubuntu,c=universe,b=i386
+     origin in.archive.ubuntu.com
+ 500 http://in.archive.ubuntu.com/ubuntu resolute/universe amd64 Packages
+     release v=26.04,o=Ubuntu,a=resolute,n=resolute,l=Ubuntu,c=universe,b=amd64
+     origin in.archive.ubuntu.com
+ 500 http://in.archive.ubuntu.com/ubuntu resolute/restricted i386 Packages
+     release v=26.04,o=Ubuntu,a=resolute,n=resolute,l=Ubuntu,c=restricted,b=i386
+     origin in.archive.ubuntu.com
+ 500 http://in.archive.ubuntu.com/ubuntu resolute/restricted amd64 Packages
+     release v=26.04,o=Ubuntu,a=resolute,n=resolute,l=Ubuntu,c=restricted,b=amd64
+     origin in.archive.ubuntu.com
+ 500 http://in.archive.ubuntu.com/ubuntu resolute/main i386 Packages
+     release v=26.04,o=Ubuntu,a=resolute,n=resolute,l=Ubuntu,c=main,b=i386
+     origin in.archive.ubuntu.com
+ 500 http://in.archive.ubuntu.com/ubuntu resolute/main amd64 Packages
+     release v=26.04,o=Ubuntu,a=resolute,n=resolute,l=Ubuntu,c=main,b=amd64
+     origin in.archive.ubuntu.com
+ 500 https://dl.google.com/linux/chrome-stable/deb stable/main amd64 Packages
+     release v=1.0,o=Google LLC,a=stable,n=stable,l=Google,c=main,b=amd64
+     origin dl.google.com
+ 500 https://us-central1-apt.pkg.dev/projects/antigravity-auto-updater-dev antigravity-debian/main amd64 Packages
+     release o=antigravity-debian,a=antigravity-debian,n=antigravity-debian,l=antigravity-debian,c=main,b=amd64
+     origin us-central1-apt.pkg.dev
+Pinned packages:

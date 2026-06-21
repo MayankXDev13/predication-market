@@ -1,5 +1,14 @@
-import { Keypair, PublicKey, Transaction } from "@solana/web3.js";
-import { getOrCreateAssociatedTokenAccount, getAccount, createTransferInstruction, getMint } from "@solana/spl-token";
+import {
+  Keypair,
+  PublicKey,
+  Transaction,
+  Connection,
+  sendAndConfirmTransaction,
+} from "@solana/web3.js";
+import {
+  getOrCreateAssociatedTokenAccount,
+  createTransferInstruction,
+} from "@solana/spl-token";
 import bs58 from "bs58";
 import { prisma } from "db";
 import { config } from "../config";
@@ -14,14 +23,84 @@ export function generateDepositMemo(userId: string): string {
 }
 
 /**
+ * Parse a Solana private key from either a base58 string or a JSON number array.
+ *
+ * Supports two formats:
+ *   - Base58: the full 64-byte secret key encoded in base58 (~88 chars)
+ *   - JSON array: "[34,156,72,...,221]" — the default output of `solana-keygen new`
+ *
+ * @throws with a descriptive message if the key is missing or not exactly 64 bytes.
+ */
+function parsePrivateKey(raw: string): Uint8Array {
+  if (!raw) {
+    throw new Error(
+      "SYSTEM_WALLET_PRIVATE_KEY is not set. " +
+        "Set it in .env to the base58 or JSON-array secret key of your system wallet."
+    );
+  }
+
+  let decoded: Uint8Array;
+
+  // JSON array — the default output of `solana-keygen new`
+  if (raw.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        throw new Error("Expected a JSON array");
+      }
+      decoded = Uint8Array.from(parsed);
+    } catch (e) {
+      throw new Error(
+        `Failed to parse SYSTEM_WALLET_PRIVATE_KEY as a JSON array: ${e}`
+      );
+    }
+  } else {
+    // Base58 encoded secret key
+    try {
+      decoded = bs58.decode(raw);
+    } catch (e) {
+      throw new Error(
+        `Failed to decode SYSTEM_WALLET_PRIVATE_KEY as base58: ${e}`
+      );
+    }
+  }
+
+  if (decoded.length !== 64) {
+    throw new Error(
+      `Invalid SYSTEM_WALLET_PRIVATE_KEY: got ${decoded.length} bytes, expected 64. ` +
+        "Make sure this is the full 64-byte secret key (secret + public), not a 32-byte seed. " +
+        "Generate a new keypair with: solana-keygen new --no-bip39-passphrase --force --outfile /dev/stdout | head -1"
+    );
+  }
+
+  return decoded;
+}
+
+/**
  * Get the system's USDC deposit wallet address.
  * Returns the public key of the system wallet.
  */
 export function getSystemWalletAddress(): string {
-  const keypair = Keypair.fromSecretKey(
-    bs58.decode(config.systemWalletPrivateKey)
-  );
+  const secretKey = parsePrivateKey(config.systemWalletPrivateKey);
+  const keypair = Keypair.fromSecretKey(secretKey);
   return keypair.publicKey.toBase58();
+}
+
+// Exported for startup validation
+export { parsePrivateKey };
+
+/**
+ * Create a Solana RPC connection using the configured URL.
+ */
+function getConnection(): Connection {
+  return new Connection(config.solanaRpcUrl, "confirmed");
+}
+
+/**
+ * Get the system wallet Keypair from the configured private key.
+ */
+function getSystemWallet(): Keypair {
+  return Keypair.fromSecretKey(parsePrivateKey(config.systemWalletPrivateKey));
 }
 
 /**
@@ -94,19 +173,32 @@ export async function processDeposit(
 }
 
 /**
- * Create an unsigned transfer transaction for a USDC withdrawal.
- * Returns the serialized transaction that the frontend signs and broadcasts.
+ * Process a USDC withdrawal from the system wallet to the user's destination address.
+ *
+ * Steps:
+ * 1. Lock the user row and check balance (FOR UPDATE)
+ * 2. Build a Solana transfer tx from the system's USDC ATA to the user's wallet
+ * 3. Sign and broadcast with the system keypair
+ * 4. Record the transaction as CONFIRMED in the DB
+ * 5. Decrement the user's usdcBalance
+ * 6. Broadcast balance_update via WebSocket
  */
 export async function createWithdrawalTransaction(
   userId: string,
   amountInCents: number,
   destinationAddress: string
-): Promise<{ transactionId: string; serializedTx: string }> {
-  // Deduct from user's usdcBalance within a transaction
+): Promise<{ transactionId: string; signature: string }> {
+  const connection = getConnection();
+  const systemWallet = getSystemWallet();
+  const destinationPubkey = new PublicKey(destinationAddress);
   const transactionId = crypto.randomUUID();
 
-  await prisma.$transaction(async (tx) => {
-    const userRows = await tx.$queryRaw<
+  // Convert cents back to USDC raw amount (6 decimals)
+  const rawAmount = amountInCents * 10_000;
+
+  const signature = await prisma.$transaction(async (prismaTx) => {
+    // Lock user row
+    const userRows = await prismaTx.$queryRaw<
       { id: string; usdcBalance: number }[]
     >`SELECT * FROM "User" WHERE id=${userId} FOR UPDATE;`;
 
@@ -116,61 +208,75 @@ export async function createWithdrawalTransaction(
       throw new Error("Insufficient USDC balance");
     }
 
-    // Record pending withdrawal
-    await tx.transaction.create({
+    // Resolve ATAs: system (source) and user (destination)
+    const mint = new PublicKey(config.usdcMint);
+
+    // Check the system's USDC balance before building the tx
+    const sourceAta = await getOrCreateAssociatedTokenAccount(
+      connection,
+      systemWallet,
+      mint,
+      systemWallet.publicKey,
+    );
+
+    const systemBalance = Number(sourceAta.amount);
+    if (systemBalance < rawAmount) {
+      throw new Error("Insufficient system USDC liquidity");
+    }
+
+    // Build the transfer instruction
+    const destinationAta = await getOrCreateAssociatedTokenAccount(
+      connection,
+      systemWallet,
+      mint,
+      destinationPubkey,
+    );
+
+    const transferIx = createTransferInstruction(
+      sourceAta.address,
+      destinationAta.address,
+      systemWallet.publicKey,
+      BigInt(rawAmount),
+    );
+
+    // Build, sign, and broadcast the transaction
+    const { blockhash } = await connection.getLatestBlockhash("confirmed");
+    const solTx = new Transaction().add(transferIx);
+    solTx.recentBlockhash = blockhash;
+    solTx.feePayer = systemWallet.publicKey;
+    solTx.sign(systemWallet);
+
+    const txSignature = await sendAndConfirmTransaction(connection, solTx, [
+      systemWallet,
+    ]);
+
+    // Deduct from user's usdcBalance and record confirmed transaction
+    await prismaTx.user.update({
+      where: { id: userId },
+      data: { usdcBalance: { decrement: amountInCents } },
+    });
+
+    await prismaTx.transaction.create({
       data: {
         id: transactionId,
         userId,
         type: "WITHDRAWAL",
         amount: amountInCents,
-        status: "PENDING",
+        signature: txSignature,
+        status: "CONFIRMED",
       },
     });
-  });
 
-  return { transactionId, serializedTx: "" };
-}
-
-/**
- * Confirm a USDC withdrawal after the user has signed and broadcast the transaction.
- */
-export async function confirmWithdrawal(
-  transactionId: string,
-  signature: string
-): Promise<void> {
-  await prisma.$transaction(async (tx) => {
-    const txn = await tx.transaction.findFirst({
-      where: { id: transactionId },
-    });
-
-    if (!txn) throw new Error("Transaction not found");
-    if (txn.status !== "PENDING") throw new Error("Transaction already processed");
-
-    // Lock user row and deduct balance
-    const userRows = await tx.$queryRaw<
-      { id: string; usdcBalance: number }[]
-    >`SELECT * FROM "User" WHERE id=${txn.userId} FOR UPDATE;`;
-
-    const user = userRows[0];
-    if (!user) throw new Error("User not found");
-
-    await tx.user.update({
-      where: { id: txn.userId },
-      data: { usdcBalance: { decrement: txn.amount } },
-    });
-
-    await tx.transaction.update({
-      where: { id: transactionId },
-      data: { status: "CONFIRMED", signature },
-    });
+    return txSignature;
   });
 
   // Broadcast
-  const txn = await prisma.transaction.findFirst({ where: { id: transactionId } });
-  if (wsManager && txn) {
-    wsManager.broadcast(`user:${txn.userId}`, {
+  if (wsManager) {
+    wsManager.broadcast(`user:${userId}`, {
       type: "balance_update",
-      userId: txn.userId,
+      userId,
     });
   }
+
+  return { transactionId, signature };
 }

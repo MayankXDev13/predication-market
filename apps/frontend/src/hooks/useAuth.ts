@@ -18,7 +18,7 @@ function getSupabase(): SupabaseClient {
 
 declare global {
   interface Window {
-    solflare?: any;
+    phantom?: { solana: any };
   }
 }
 
@@ -64,15 +64,30 @@ export function useAuth() {
     }
   }, [token, supabase]);
 
-  const signIn = useCallback(async () => {
-    if (window.solflare) {
-      await supabase.auth.signInWithWeb3({
-        chain: 'solana',
-        statement: 'I accept the Terms of Service at https://example.com/tos',
-        wallet: window.solflare,
-      });
+const signIn = useCallback(async () => {
+  try {
+    if (!window.phantom?.solana) {
+      throw new Error("Phantom wallet not installed");
     }
-  }, [supabase]);
+
+    await window.phantom.solana.connect();
+
+    const { data, error } = await supabase.auth.signInWithWeb3({
+      chain: "solana",
+      wallet: window.phantom.solana,
+      statement: "Sign in to Prediction Market",
+    });
+
+    if (error) {
+      console.error(error);
+      throw error;
+    }
+
+    console.log("Signed in", data);
+  } catch (err) {
+    console.error("Web3 login failed:", err);
+  }
+}, [supabase]);
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();

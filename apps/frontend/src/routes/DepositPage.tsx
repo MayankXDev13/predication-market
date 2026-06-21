@@ -26,11 +26,11 @@ export function DepositPage() {
   const handleWithdraw = async () => {
     setLoading(true);
     try {
-      const data = await api.post<{ transactionId: string }>('/usdc/withdraw', {
+      const data = await api.post<{ transactionId: string; signature: string }>('/usdc/withdraw', {
         amount: Math.round(parseFloat(amount) * 100),
         destinationAddress: 'user_wallet_address',
       });
-      toast(`Withdrawal initiated: ${data.transactionId}`);
+      toast(`Withdrawn! Tx: ${data.signature.slice(0, 16)}...`);
       await fetchBalance();
     } catch (err: any) {
       toast(err.message || 'Withdrawal failed', 'error');

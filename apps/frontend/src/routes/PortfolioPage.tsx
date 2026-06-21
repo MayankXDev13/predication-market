@@ -16,7 +16,7 @@ export function PortfolioPage() {
     <div className="p-4 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold text-white mb-6">Portfolio</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="mb-6">
         <BalanceCard />
       </div>
 

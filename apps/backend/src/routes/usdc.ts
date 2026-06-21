@@ -8,7 +8,6 @@ import {
   parseDepositMemo,
   processDeposit,
   createWithdrawalTransaction,
-  confirmWithdrawal,
 } from "../services/usdcService";
 
 const router = Router();
@@ -66,7 +65,8 @@ router.post("/usdc/webhook", async (req, res) => {
   }
 });
 
-// POST /usdc/withdraw — Create a withdrawal (returns unsigned tx for user to sign)
+// POST /usdc/withdraw — Withdraw USDC to the user's Solana wallet
+// Builds, signs, and broadcasts the transfer on the server side.
 router.post("/usdc/withdraw", authMiddleware, async (req, res) => {
   const { success, data } = WithdrawSchema.safeParse(req.body);
   const userId: string = req.userId;
@@ -82,32 +82,17 @@ router.post("/usdc/withdraw", authMiddleware, async (req, res) => {
       data.amount,
       data.destinationAddress
     );
-    res.json({ transactionId: result.transactionId, serializedTx: result.serializedTx });
+    res.json({ transactionId: result.transactionId, signature: result.signature });
   } catch (error: any) {
     console.error("Error creating withdrawal:", error);
-    if (error.message === "Insufficient USDC balance") {
+    if (
+      error.message === "Insufficient USDC balance" ||
+      error.message === "Insufficient system USDC liquidity"
+    ) {
       res.status(403).json({ message: error.message });
     } else {
       res.status(500).json({ message: "Error creating withdrawal" });
     }
-  }
-});
-
-// POST /usdc/withdraw/confirm — Confirm a withdrawal after user signs
-router.post("/usdc/withdraw/confirm", authMiddleware, async (req, res) => {
-  const { transactionId, signature } = req.body;
-
-  if (!transactionId || !signature) {
-    res.status(411).json({ message: "transactionId and signature required" });
-    return;
-  }
-
-  try {
-    await confirmWithdrawal(transactionId, signature);
-    res.json({ message: "Withdrawal confirmed" });
-  } catch (error: any) {
-    console.error("Error confirming withdrawal:", error);
-    res.status(500).json({ message: "Error confirming withdrawal" });
   }
 });
 

@@ -18,6 +18,7 @@ model User {
   usdBalance      Int            // in cents (e.g. $100.11 = 10011)
   usdcBalance     Int            @default(0) // USDC balance in cents (1 USDC = 100)
   usdcDepositMemo String?        @unique // unique memo for USDC deposit tracking
+  isAdmin         Boolean        @default(false)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   positions       Position[]

@@ -10,12 +10,12 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",
     "cors": "^2.8.6",
+    "db": "workspace:*",
     "dotenv": "^17.4.2",
     "express": "^4.18.2"
   },
   "peerDependencies": {
-    "typescript": "^5",
-    "db": "*"
+    "typescript": "^5"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

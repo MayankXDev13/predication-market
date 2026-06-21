@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import { middleware } from "./middleware";
+import { prisma } from "db";
 
 const app = express();
 

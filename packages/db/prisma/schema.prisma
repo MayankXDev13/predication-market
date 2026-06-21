@@ -14,7 +14,7 @@ datasource db {
 
 model User {
   id         String         @id @default(cuid())
-  address    String
+  address    String         @unique
   usdBalance Int // $100.11 +> 10011 assue a decimal of 2 for fiat balances
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
@@ -47,6 +47,8 @@ model Position {
   market Market @relation(fields: [marketId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  qty       Int
+  @@unique([userId, marketId, type])
 }
 
 model OrderHistory {

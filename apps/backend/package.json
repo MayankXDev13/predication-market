@@ -12,7 +12,9 @@
     "cors": "^2.8.6",
     "db": "workspace:*",
     "dotenv": "^17.4.2",
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "uuid": "^14.0.1",
+    "zod": "^4.4.3"
   },
   "peerDependencies": {
     "typescript": "^5"

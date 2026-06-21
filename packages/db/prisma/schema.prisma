@@ -1,0 +1,76 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id         String         @id @default(cuid())
+  address    String
+  usdBalance Int // $100.11 +> 10011 assue a decimal of 2 for fiat balances
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  positions  Position[]
+  orders     OrderHistory[]
+}
+
+model Market {
+  id                    String         @id @default(cuid())
+  title                 String
+  description           String
+  image                 String
+  resolutionDescription String // who decide the outcome of the market and if any case is 50% give clarity on it.
+  yesOrderbook          Json // all open order of yes { price : amount }
+  noOrderbook           Json // all open order of no { price : amount }
+  totalQty              Int // total quantity available for trade yes + no
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  positions             Position[]
+  orders                OrderHistory[]
+}
+
+model Position {
+  id       String       @id @default(cuid())
+  marketId String
+  userId   String
+  type     PositionType
+
+  user   User   @relation(fields: [userId], references: [id])
+  market Market @relation(fields: [marketId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OrderHistory {
+  id        String    @id @default(cuid())
+  orderType OrderType
+  qty       Int
+  price     Int
+  userId    String
+  marketId  String
+
+  market Market @relation(fields: [marketId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+
+}
+
+enum PositionType {
+  Yes
+  No
+}
+
+enum OrderType {
+  Buy
+  Sell
+  Split
+  Merge
+}

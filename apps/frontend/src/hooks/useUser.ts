@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { useSupabase } from "./useSupabase";
+import { supabase } from "../lib/supabase";
+
 
 export function useUser() {
   const [claims, setClaims] = useState(null);
-  const supabase = useSupabase();
   useEffect(() => {
     supabase.auth.getClaims().then(({ data: { claims } }) => {
       setClaims(claims);

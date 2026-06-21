@@ -13,13 +13,16 @@ datasource db {
 }
 
 model User {
-  id         String         @id @default(cuid())
-  address    String         @unique
-  usdBalance Int // $100.11 +> 10011 assue a decimal of 2 for fiat balances
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
-  positions  Position[]
-  orders     OrderHistory[]
+  id              String         @id @default(cuid())
+  address         String         @unique
+  usdBalance      Int            // in cents (e.g. $100.11 = 10011)
+  usdcBalance     Int            @default(0) // USDC balance in cents (1 USDC = 100)
+  usdcDepositMemo String?        @unique // unique memo for USDC deposit tracking
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  positions       Position[]
+  orders          OrderHistory[]
+  transactions    Transaction[]
 }
 
 model Market {
@@ -27,12 +30,16 @@ model Market {
   title                 String
   description           String
   image                 String
-  resolutionDescription String // who decide the outcome of the market and if any case is 50% give clarity on it.
-  yesOrderbook          Json // all open order of yes { price : amount }
-  noOrderbook           Json // all open order of no { price : amount }
-  totalQty              Int // total quantity available for trade yes + no
-  createdAt             DateTime       @default(now())
-  updatedAt             DateTime       @updatedAt
+  resolutionDescription String          // who decides the outcome, clarity on edge cases
+  yesOrderbook          Json            // all open orders for Yes side
+  noOrderbook           Json            // all open orders for No side
+  totalQty              Int             // total outstanding shares (Yes + No)
+  status                MarketStatus    @default(OPEN)
+  resolvedOutcome       OutcomeType?
+  resolvedAt            DateTime?
+  resolvedBy            String?         // userId of the resolver
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
   positions             Position[]
   orders                OrderHistory[]
 }
@@ -56,13 +63,26 @@ model OrderHistory {
   orderType OrderType
   qty       Int
   price     Int
+  side      String?   // "yes" | "no"
   userId    String
   marketId  String
+  createdAt DateTime  @default(now())
 
   market Market @relation(fields: [marketId], references: [id])
   user   User   @relation(fields: [userId], references: [id])
+}
 
+model Transaction {
+  id        String             @id @default(cuid())
+  userId    String
+  type      TransactionType
+  amount    Int                // in cents
+  signature String?            // Solana tx signature
+  status    TransactionStatus  @default(PENDING)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
 
+  user User @relation(fields: [userId], references: [id])
 }
 
 enum PositionType {
@@ -75,4 +95,27 @@ enum OrderType {
   Sell
   Split
   Merge
+}
+
+enum MarketStatus {
+  OPEN
+  CLOSED
+  RESOLVED
+}
+
+enum OutcomeType {
+  YES
+  NO
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  SETTLEMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  CONFIRMED
+  FAILED
 }

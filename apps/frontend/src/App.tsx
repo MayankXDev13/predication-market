@@ -1,203 +1,72 @@
-import { useState, useEffect } from "react";
-import { useUser } from "./hooks/useUser";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import type { Market } from "./types";
-import { MarketList } from "./components/MarketList";
-import { MarketDetail } from "./components/MarketDetail";
-import { OrderForm } from "./components/OrderForm";
-import { Balance } from "./components/Balance";
-import { Positions } from "./components/Positions";
-import { OrderHistory } from "./components/OrderHistory";
-import { SplitMerge } from "./components/SplitMerge";
-import "./App.css";
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './hooks/useAuth';
+import { Header } from './components/layout/Header';
+import { ToastContainer } from './components/ui/Toast';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
+import { MarketsPage } from './routes/MarketsPage';
+import { MarketPage } from './routes/MarketPage';
+import { PortfolioPage } from './routes/PortfolioPage';
+import { HistoryPage } from './routes/HistoryPage';
+import { DepositPage } from './routes/DepositPage';
 
-declare global {
-  interface Window {
-    solflare?: any;
-  }
+function AuthScreen({ onSignIn }: { onSignIn: () => void }) {
+  return (
+    <div className="min-h-screen bg-[#0b0b0f] flex items-center justify-center">
+      <div className="bg-[#1a1a23] rounded-lg p-8 max-w-sm w-full mx-4 text-center">
+        <h1 className="text-2xl font-bold text-white mb-2">PredMarket</h1>
+        <p className="text-sm text-gray-400 mb-6">
+          Sign in with your Solflare wallet to access the prediction market
+        </p>
+        {window.solflare ? (
+          <button
+            onClick={onSignIn}
+            className="w-full py-2.5 rounded-lg text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+          >
+            Sign in with Solflare
+          </button>
+        ) : (
+          <p className="text-sm text-yellow-400">
+            Please install the Solflare wallet extension
+          </p>
+        )}
+      </div>
+    </div>
+  );
 }
 
-function App() {
-  const [supabase] = useState(createClient(
-    "https://sgvenstbkiedwlmctkym.supabase.co",
-    "sb_publishable_UzrNN841hMRh49RkCtCvbA_5ayRmeRN"
-  ));
-  return <AppWrapper supabase={supabase} />;
+function AppShell() {
+  return (
+    <>
+      <Header />
+      <ErrorBoundary>
+        <Routes>
+          <Route path="/" element={<MarketsPage />} />
+          <Route path="/markets/:id" element={<MarketPage />} />
+          <Route path="/portfolio" element={<PortfolioPage />} />
+          <Route path="/history" element={<HistoryPage />} />
+          <Route path="/deposit" element={<DepositPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </ErrorBoundary>
+      <ToastContainer />
+    </>
+  );
 }
 
-function AppWrapper({ supabase }: { supabase: SupabaseClient }) {
-  const { claims } = useUser(supabase);
-  const [token, setToken] = useState<string>("");
-  const [markets, setMarkets] = useState<Market[]>([]);
-  const [selectedMarket, setSelectedMarket] = useState<Market | null>(null);
-  const [activeTab, setActiveTab] = useState<string>("markets");
-  const [refreshKey, setRefreshKey] = useState(0);
+export default function App() {
+  const { isAuthenticated, loading, signIn } = useAuth();
 
-  useEffect(() => {
-    if (supabase) {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.access_token) {
-          setToken(session.access_token);
-        }
-      });
-    }
-  }, [supabase, claims]);
-
-  useEffect(() => {
-    fetchMarkets();
-  }, []);
-
-  const fetchMarkets = async () => {
-    try {
-      const response = await fetch("http://localhost:3000/markets");
-      const data = await response.json();
-      const nextMarkets = data.markets || [];
-      setMarkets(nextMarkets);
-      setSelectedMarket((current) => (
-        current ? nextMarkets.find((market: Market) => market.id === current.id) || current : current
-      ));
-    } catch (err) {
-      console.error("Failed to fetch markets:", err);
-    }
-  };
-
-  const handleSignIn = async () => {
-    if (window.solflare) {
-      await supabase.auth.signInWithWeb3({
-        chain: 'solana',
-        statement: 'I accept the Terms of Service at https://example.com/tos',
-        wallet: window.solflare,
-      });
-    }
-  };
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    setToken("");
-    setSelectedMarket(null);
-    setActiveTab("markets");
-  };
-
-  const handleSelectMarket = (marketId: string) => {
-    const market = markets.find(m => m.id === marketId);
-    if (market) {
-      setSelectedMarket(market);
-      setActiveTab("trading");
-    }
-  };
-
-  const handleActionComplete = () => {
-    setRefreshKey(prev => prev + 1);
-    fetchMarkets();
-  };
-
-  if (!claims) {
+  if (loading) {
     return (
-      <div className="auth-container">
-        <div className="auth-box">
-          <h1>Prediction Market</h1>
-          <p>Please sign in to access the market</p>
-          {window.solflare && (
-            <button onClick={handleSignIn} className="signin-button">
-              Sign in with Solflare
-            </button>
-          )}
-          {!window.solflare && (
-            <p>Please install Solflare wallet to continue</p>
-          )}
-        </div>
+      <div className="min-h-screen bg-[#0b0b0f] flex items-center justify-center">
+        <div className="text-gray-400 text-sm">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="app-container">
-      <header className="app-header">
-        <h1>Prediction Market</h1>
-        <button onClick={handleSignOut} className="logout-button">
-          Logout
-        </button>
-      </header>
-
-      <nav className="app-nav">
-        <button
-          className={activeTab === "markets" ? "active" : ""}
-          onClick={() => {
-            setActiveTab("markets");
-            setSelectedMarket(null);
-          }}
-        >
-          Markets
-        </button>
-        <button
-          className={activeTab === "trading" ? "active" : ""}
-          onClick={() => setActiveTab("trading")}
-          disabled={!selectedMarket}
-        >
-          Trading
-        </button>
-        <button
-          className={activeTab === "balance" ? "active" : ""}
-          onClick={() => setActiveTab("balance")}
-        >
-          Balance
-        </button>
-        <button
-          className={activeTab === "positions" ? "active" : ""}
-          onClick={() => setActiveTab("positions")}
-        >
-          Positions
-        </button>
-        <button
-          className={activeTab === "history" ? "active" : ""}
-          onClick={() => setActiveTab("history")}
-        >
-          History
-        </button>
-      </nav>
-
-      <main className="app-main">
-        {activeTab === "markets" && (
-          <MarketList markets={markets} onSelectMarket={handleSelectMarket} />
-        )}
-
-        {activeTab === "trading" && selectedMarket && (
-          <div className="trading-container">
-            <MarketDetail
-              market={selectedMarket}
-              onBack={() => {
-                setActiveTab("markets");
-                setSelectedMarket(null);
-              }}
-            />
-            <aside className="trade-sidebar">
-              <OrderForm
-                market={selectedMarket}
-                token={token}
-                onOrderPlaced={handleActionComplete}
-              />
-              <SplitMerge
-                market={selectedMarket}
-                token={token}
-                onActionComplete={handleActionComplete}
-              />
-            </aside>
-          </div>
-        )}
-
-        {activeTab === "balance" && <Balance token={token} key={refreshKey} />}
-
-        {activeTab === "positions" && (
-          <Positions token={token} markets={markets} key={refreshKey} />
-        )}
-
-        {activeTab === "history" && (
-          <OrderHistory token={token} markets={markets} key={refreshKey} />
-        )}
-
-      </main>
-    </div>
+    <BrowserRouter>
+      {isAuthenticated ? <AppShell /> : <AuthScreen onSignIn={signIn} />}
+    </BrowserRouter>
   );
 }
-
-export default App;

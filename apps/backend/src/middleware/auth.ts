@@ -1,8 +1,8 @@
 import { NextFunction, Request, Response } from "express";
-import { supabase } from "./lib/supabase";
+import { supabase } from "../lib/supabase";
 import { prisma } from "db";
 
-export async function middleware(
+export async function authMiddleware(
   req: Request,
   res: Response,
   next: NextFunction,
@@ -29,7 +29,7 @@ export async function middleware(
 
     const dbUser = await prisma.user.upsert({
       where: { address },
-      update: {address},
+      update: { address },
       create: { address, usdBalance: 0 },
     });
 
